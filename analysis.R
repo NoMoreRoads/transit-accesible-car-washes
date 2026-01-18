@@ -1,6 +1,7 @@
+options(java.parameters = "-Xmx2G")
 # Libraries ====
 library(pacman)
-p_load(tidyverse, tidycensus, osmdata)
+p_load(tidyverse, tidycensus, osmdata, r5r)
 
 # Load Data from APIs ====
 ## Census ====
