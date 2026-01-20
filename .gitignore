@@ -1,2 +1,4 @@
 .Rprofile
 rjavaenv
+downloads/
+.gitignore
