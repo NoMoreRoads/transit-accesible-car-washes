@@ -67,7 +67,7 @@ ttm <- travel_time_matrix(
   destinations = osm_features_points,
   mode = c("WALK", "TRANSIT"),
   departure_datetime = as.POSIXct("2026/01/07 12:00"),
-  max_trip_duration = 35
+  max_trip_duration = 45
 )
 
 # Analyze ====
@@ -78,8 +78,17 @@ population_by_destination <- ttm %>%
     osm_features_points %>% st_drop_geometry(),
     by = join_by(to_id == id)
   ) %>%
+  mutate(
+    people_30_mins = if_else(travel_time_p50 <= 30, estimate, 0),
+    people_45_mins = if_else(travel_time_p50 <= 30, 0, travel_time_p50),
+    points = people_30_mins + (people_45_mins * 0.5)
+  ) %>%
   group_by(to_id, name, car_wash, car_repair, gas_station) %>%
-  summarise(population = sum(estimate, na.rm = T)) %>%
+  summarise(
+    people_30_mins = sum(people_30_mins),
+    people_45_mins = sum(people_45_mins),
+    points = sum(points)
+  ) %>%
   pivot_longer(
     cols = c(car_wash, car_repair, gas_station),
     names_to = "destination_type"
@@ -87,12 +96,13 @@ population_by_destination <- ttm %>%
   filter(value) %>%
   select(-value) %>%
   group_by(destination_type) %>%
-  arrange(desc(population), .by_group = T) %>%
-  mutate(rank = row_number()) %>%
-  ungroup() %>%
-  filter(rank <= 10)
+  arrange(desc(points), .by_group = T) %>%
+  mutate(rank = row_number())
 
 spatial_results <- population_by_destination %>%
   left_join(osm_features_points %>% select(id), by = join_by(to_id == id))
 
-mapview::mapview(spatial_results %>% st_sf(), zcol = "destination_type")
+mapview::mapview(
+  spatial_results %>% st_sf() %>% filter(rank <= 3),
+  zcol = "destination_type"
+)
